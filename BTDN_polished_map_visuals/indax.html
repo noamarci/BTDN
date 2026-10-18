@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>Bloons TD - תפריט ראשי</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-image: url('Gemini_Generated_Image_cucopccucopccuco.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        .menu-container {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(8px);
+            padding: 30px 40px;
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.6);
+            text-align: center;
+            width: min(1060px, calc(100vw - 42px));
+            border: 4px solid #333;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        h1 { color: #333; font-size: 42px; margin: 0 0 5px 0; text-shadow: 2px 2px 0px #ccc; }
+        p.subtitle { color: #555; font-size: 18px; margin-bottom: 25px; font-weight: bold; }
+        h2 { color: #333; font-size: 24px; margin-bottom: 20px; }
+
+        .btn {
+            display: block; width: 100%; padding: 15px; margin: 15px 0;
+            font-size: 22px; font-weight: bold; color: white;
+            border: 3px solid rgba(0,0,0,0.2); border-radius: 12px;
+            cursor: pointer; transition: all 0.2s ease-in-out;
+        }
+        .btn:hover { transform: translateY(-3px); filter: brightness(1.1); box-shadow: 0 6px 12px rgba(0,0,0,0.3); }
+
+        #start-btn { background-color: #007bff; animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+
+        /* כרטיסיות מפות */
+        #map-selection {
+            grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px;
+            align-items: stretch; text-align: right;
+        }
+        #map-selection h2 { grid-column: 1 / -1; text-align: center; margin: 0 0 2px; }
+        .map-card {
+            background: white; border: 3px solid #ccc; border-radius: 12px;
+            margin: 0; cursor: pointer; overflow: hidden; transition: 0.2s;
+            box-shadow: 0 6px 14px rgba(0,0,0,.16);
+        }
+        .map-card:hover { border-color: #007bff; transform: scale(1.02); }
+        .map-card img { width: 100%; height: 160px; object-fit: cover; display:block; background:#77b75a; }
+        .map-card p { margin: 11px 10px; font-weight: bold; font-size: 17px; text-align:center; }
+
+        @media (max-width: 760px) {
+            .menu-container { width: min(620px, calc(100vw - 28px)); padding: 22px 16px; }
+            #map-selection { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+            .map-card img { height: 128px; }
+        }
+        @media (max-width: 430px) {
+            #map-selection { grid-template-columns: 1fr; }
+            .map-card img { height: 145px; }
+        }
+
+        /* רמות קושי */
+        #btn-easy { background-color: #28a745; }
+        #btn-medium { background-color: #ff8c00; }
+        #btn-hard { background-color: #dc3545; }
+
+        /* מסך תחזוקה */
+        #maintenance-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: none; justify-content: center; align-items: center; z-index: 9999;
+        }
+        .maintenance-box {
+            background: white; padding: 30px; border-radius: 20px;
+            text-align: center; max-width: 450px; border: 5px solid #ffcc00;
+        }
+        .maintenance-box img { width: 100%; border-radius: 10px; margin-bottom: 20px; }
+        .maintenance-box h2 { color: #d9534f; margin-bottom: 10px; }
+
+        #map-selection, #difficulty-selection { display: none; }
+    </style>
+</head>
+<body>
+
+    <div id="maintenance-overlay">
+        <div class="maintenance-box">
+            <img src="ChatGPT Image May 1, 2026, 01_06_53 PM.png" alt="בבנייה">
+            <h2>השלב במצב תחזוקה</h2>
+            <p>הקופים הבנאים שלנו עובדים קשה על המפה הזאת. חזור בקרוב!</p>
+            <button class="btn" style="background-color: #333;" onclick="closeMaintenance()">חזור לתפריט</button>
+        </div>
+    </div>
+
+    <div class="menu-container">
+        <h1>Bloons TD</h1>
+        <p class="subtitle" id="subtitle">משחק הגנת מגדלים</p>
+        
+        <button id="start-btn" class="btn" onclick="showMaps()">התחל משחק!</button>
+
+        <div id="map-selection">
+            <h2>בחר מפה:</h2>
+            <div class="map-card" onclick="selectMap('classic')">
+                <img src="classic_map.jpg" onerror="this.style.backgroundColor='#5cb85c'">
+                <p>🌳 מסלול קלאסי</p>
+            </div>
+            <div class="map-card" onclick="selectMap('end_of_road')">
+                <img src="end_of_road.jpg">
+                <p>🛣️ סוף הדרך (End of Road)</p>
+            </div>
+            <div class="map-card" onclick="selectMap('monkey_meadow')">
+                <img src="monkey_meadow.jpg">
+                <p>🌳קרחת היער (Monkey Meadow)</p>
+            </div>
+            <div class="map-card" onclick="selectMap('town_center')">
+                <img src="town_center.jpg">
+                <p>🏘️ מרכז העיירה(Town Center)</p>
+            </div>
+            <div class="map-card" onclick="selectMap('skates')">
+                <img src="skates.jpg">
+                <p>⛸️ אחלה קרח(Skates)</p>
+            </div>
+            <div class="map-card" onclick="selectMap('resort')">
+                <img src="resort.jpg">
+                <p>🏖️נופש (Resort)</p>
+            </div>
+        </div>
+
+        <div id="difficulty-selection">
+            <h2 id="current-map-title">בחר קושי:</h2>
+            <button id="btn-easy" class="btn" onclick="startGame('btd_game_easy.html')">🟢 קל</button>
+            <button id="btn-medium" class="btn" onclick="startGame('btd_game_medium.html')">🟠 בינוני</button>
+            <button id="btn-hard" class="btn" onclick="startGame('btd_game_hard.html')">🔴 קשה</button>
+            <button class="btn" style="background-color: #999;" onclick="showMaps()">חזור</button>
+        </div>
+    </div>
+
+    <script>
+        let currentMap = 'classic';
+
+        function showMaps() {
+            document.getElementById('start-btn').style.display = 'none';
+            document.getElementById('subtitle').style.display = 'none';
+            document.getElementById('difficulty-selection').style.display = 'none';
+            document.getElementById('map-selection').style.display = 'grid';
+        }
+
+        function selectMap(mapName) {
+            currentMap = mapName;
+            localStorage.setItem('selectedMap', mapName);
+            document.getElementById('map-selection').style.display = 'none';
+            document.getElementById('difficulty-selection').style.display = 'block';
+            
+            let title = "בחר קושי: ";
+            if(mapName === 'classic') title += "(קלאסי)";
+            else if(mapName === 'end_of_road') title += "(סוף הדרך)";
+            else if(mapName === 'monkey_meadow') title += "(Monkey Meadow)";
+            else if(mapName === 'town_center') title += "(Town Center)";
+            else if(mapName === 'skates') title += "(Skates)";
+            else if(mapName === 'resort') title += "(Resort)";
+            document.getElementById('current-map-title').innerText = title;
+        }
+
+        function startGame(htmlFile) {
+            // מפת סוף הדרך (End of Road) - עכשיו פתוחה לחלוטין!
+            if (currentMap === 'end_of_road') {
+                if (htmlFile === 'btd_game_easy.html') {
+                    window.location.href = 'game_end_of_road_easy.html';
+                } else if (htmlFile === 'btd_game_medium.html') {
+                    window.location.href = 'game_end_of_road_medium.html';
+                } else if (htmlFile === 'btd_game_hard.html') {
+                    window.location.href = 'game_end_of_road_hard.html'; 
+                } else {
+                    document.getElementById('maintenance-overlay').style.display = 'flex';
+                }
+                return;
+            }
+
+            // מפה קלאסית (ללא חסימות)
+            if (currentMap === 'classic') {
+                window.location.href = htmlFile;
+                return;
+            }
+
+            const newMaps = ['monkey_meadow', 'town_center', 'skates', 'resort'];
+            if (newMaps.includes(currentMap)) {
+                const difficulty = htmlFile.replace('btd_game_', '').replace('.html', '');
+                window.location.href = 'game_' + currentMap + '_' + difficulty + '.html';
+                return;
+            }
+
+            // גיבוי אם לחצו על משהו לא מוכר
+            document.getElementById('maintenance-overlay').style.display = 'flex';
+        }
+
+        function closeMaintenance() {
+            document.getElementById('maintenance-overlay').style.display = 'none';
+        }
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,1488 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta charset="UTF-8">
+    <title>Bloons TD - Auto Start & Real Prices</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; background-color: #e9ecef; margin: 0; padding: 20px;}
+        #gameContainer { display: flex; justify-content: center; gap: 15px; margin-top: 15px; align-items: flex-start; }
+        canvas { background: #5cb85c; border: 4px solid #333; cursor: crosshair; box-shadow: 0px 4px 15px rgba(0,0,0,0.3); border-radius: 10px; flex-shrink: 0; }
+        #ui { font-size: 20px; font-weight: bold; background: white; padding: 15px; border-radius: 8px; display: inline-block; box-shadow: 0 2px 5px rgba(0,0,0,0.1);}
+        .stats { color: #d32f2f; }
+        .money { color: #388e3c; }
+        .round { color: #007bff; }
+        
+        #sidePanels { display: flex; flex-direction: column; gap: 10px; width: 320px; flex-shrink: 0; }
+        #leftPanels { display: none; flex-direction: column; gap: 10px; width: 220px; flex-shrink: 0; }
+        .panel-box { background: white; padding: 15px; border-radius: 8px; border: 2px solid #ccc; max-height: 480px; overflow-y: auto;}
+        
+        #towerMenu { display: flex; flex-direction: column; gap: 10px; }
+        .tower-group { display: flex; flex-direction: column; gap: 5px; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        .tower-group h3 { margin: 0; font-size: 16px; color: #555; background: #f8f9fa; padding: 3px; border-radius: 3px;}
+        .tower-btns-container { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+        .tower-btn { display: flex; align-items: center; gap: 8px; padding: 6px; cursor: pointer; border: 2px solid transparent; border-radius: 8px; font-weight: bold; font-size: 12px; background: #f8f9fa; transition: 0.2s; color: #333; }
+        .tower-btn:hover { background: #e2e6ea; }
+        .tower-btn.selected { border-color: #007bff; background: #e7f1ff; }
+        .icon-canvas { background: #fff; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,0.2); width: 34px; height: 34px; }
+        .tower-btn span { flex-grow: 1; text-align: right; }
+
+        /* אזור השדרוגים */
+        #upgradePanel { text-align: center; }
+        .upg-icon-canvas { width: 80px; height: 80px; margin: 0 auto 10px; display: block; }
+        .upg-btn { width: 100%; padding: 10px; margin-top: 5px; cursor: pointer; background: #28a745; color: white; border: none; border-radius: 5px; font-weight: bold; transition: 0.2s;}
+        .upg-btn:disabled { background: #ccc; cursor: not-allowed; }
+        .upg-btn:hover:not(:disabled) { background: #218838; }
+
+        .game-controls { display: inline-flex; gap: 10px; margin-right: 15px; align-items: center;}
+        
+        #start-btn { font-size: 16px; padding: 8px 15px; background: #ff8c00; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; transition: 0.2s;}
+        #start-btn:hover:not(:disabled) { background: #e07b00; }
+        #start-btn:disabled { background: #ccc; cursor: not-allowed; }
+
+        #speed-btn { font-size: 16px; padding: 8px 15px; background: #6c757d; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; transition: 0.2s; min-width: 100px;}
+        #speed-btn:hover { background: #5a6268; }
+        #speed-btn.fast { background: #17a2b8; }
+        #speed-btn.fast:hover { background: #138496; }
+
+        /* כפתור שלבים אוטומטיים */
+        #auto-start-btn { font-size: 16px; padding: 8px 15px; background: #6c757d; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; transition: 0.2s; min-width: 140px;}
+        #auto-start-btn:hover { background: #5a6268; }
+        #auto-start-btn.on { background: #28a745; } /* צבע ירוק כשזה דלוק */
+        #auto-start-btn.on:hover { background: #218838; }
+
+     #settings-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            font-size: 40px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            z-index: 1001;
+            transition: transform 0.3s;
+        }
+        #settings-btn:hover { transform: rotate(90deg); }
+
+        #settings-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+
+        .settings-box {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            text-align: center;
+            border: 5px solid #333;
+            width: 300px;
+        }
+
+        .settings-box .menu-btn {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            margin: 10px 0;
+            font-size: 20px;
+            font-weight: bold;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+        }
+
+        .btn-home { background-color: #007bff; }
+        .btn-restart { background-color: #ff8c00; }
+        .btn-continue { background-color: #28a745; }
+    </style>
+</head>
+<body>
+         <button id="settings-btn" onclick="toggleSettings()">⚙️</button>
+
+    <div id="settings-overlay">
+        <div class="settings-box">
+            <h2 style="margin-top:0;">הגדרות</h2>
+            <button class="menu-btn btn-home" onclick="goHome()">🏠 בית</button>
+            <button class="menu-btn btn-restart" onclick="restartGame()">🔄 ריסטארט</button>
+            <button class="menu-btn btn-continue" onclick="toggleSettings()">➡️ המשך</button>
+        </div>
+    </div>
+
+    <div id="ui">
+
+        ❤️ חיים: <span id="lives" class="stats">150</span> | 
+        💵 כסף: <span id="money" class="money">500</span> |
+        🌊 שלב: <span id="round" class="round">1</span> / 80
+        <div class="game-controls">
+            <button id="start-btn" onclick="startRound()">התחל שלב</button>
+            <button id="speed-btn" onclick="toggleSpeed()">⏩ רגיל</button>
+            <button id="auto-start-btn" onclick="toggleAutoStart()">▶️ אוטומטי: כבוי</button>
+        </div>
+    </div>
+    
+    <div id="gameContainer">
+        <div id="sidePanels">
+            <div id="towerMenu" class="panel-box">
+                <div class="tower-group">
+                    <h3>Primary</h3>
+                    <div class="tower-btns-container">
+                        <button class="tower-btn" onclick="selectTower('Dart')" id="btn-Dart"><canvas id="icon-Dart" class="icon-canvas" width="34" height="34"></canvas><span>Dart (200)</span></button>
+                        <button class="tower-btn" onclick="selectTower('Boomerang')" id="btn-Boomerang"><canvas id="icon-Boomerang" class="icon-canvas" width="34" height="34"></canvas><span>Boomer (325)</span></button>
+                        <button class="tower-btn" onclick="selectTower('Tack')" id="btn-Tack"><canvas id="icon-Tack" class="icon-canvas" width="34" height="34"></canvas><span>Tack (280)</span></button>
+                        <button class="tower-btn" onclick="selectTower('Ice')" id="btn-Ice"><canvas id="icon-Ice" class="icon-canvas" width="34" height="34"></canvas><span>Ice (500)</span></button>
+                        <button class="tower-btn" onclick="selectTower('Glue')" id="btn-Glue"><canvas id="icon-Glue" class="icon-canvas" width="34" height="34"></canvas><span>Glue (275)</span></button>
+                        <button class="tower-btn" onclick="selectTower('Bomb')" id="btn-Bomb"><canvas id="icon-Bomb" class="icon-canvas" width="34" height="34"></canvas><span>Bomb (525)</span></button>
+                    </div>
+                </div>
+
+                <div class="tower-group">
+                    <h3>Military</h3>
+                    <div class="tower-btns-container">
+                        <button class="tower-btn" onclick="selectTower('Sniper')" id="btn-Sniper"><canvas id="icon-Sniper" class="icon-canvas" width="34" height="34"></canvas><span>Sniper (350)</span></button>
+                        <button class="tower-btn" onclick="selectTower('Ninja')" id="btn-Ninja"><canvas id="icon-Ninja" class="icon-canvas" width="34" height="34"></canvas><span>Ninja (500)</span></button>
+                        <button class="tower-btn" onclick="selectTower('Heli')" id="btn-Heli"><canvas id="icon-Heli" class="icon-canvas" width="34" height="34"></canvas><span>Heli (1000)</span></button>
+                    </div>
+                </div>
+
+                <div class="tower-group">
+                    <h3>Magic</h3>
+                    <div class="tower-btns-container">
+                        <button class="tower-btn" onclick="selectTower('Wizard')" id="btn-Wizard"><canvas id="icon-Wizard" class="icon-canvas" width="34" height="34"></canvas><span>Wizard (400)</span></button>
+                        <button class="tower-btn" onclick="selectTower('Super')" id="btn-Super"><canvas id="icon-Super" class="icon-canvas" width="34" height="34"></canvas><span>Super (2500)</span></button>
+                        <button class="tower-btn" onclick="selectTower('Alchemist')" id="btn-Alchemist"><canvas id="icon-Alchemist" class="icon-canvas" width="34" height="34"></canvas><span>Alch (395)</span></button>
+                    </div>
+                </div>
+
+                <div class="tower-group">
+                    <h3>Support</h3>
+                    <div class="tower-btns-container">
+                        <button class="tower-btn" onclick="selectTower('Farm')" id="btn-Farm"><canvas id="icon-Farm" class="icon-canvas" width="34" height="34"></canvas><span>Farm (1250)</span></button>
+                        <button class="tower-btn" onclick="selectTower('Village')" id="btn-Village"><canvas id="icon-Village" class="icon-canvas" width="34" height="34"></canvas><span>Village (1200)</span></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <canvas id="gameCanvas" width="700" height="450"></canvas>
+
+        <div id="leftPanels">
+            <div id="upgradePanel" class="panel-box">
+                <canvas id="upg-tower-icon" class="upg-icon-canvas" width="80" height="80"></canvas>
+                <h3 id="upg-title" style="margin-top:0; color: #007bff; font-size: 22px;"></h3>
+                <p style="font-size: 15px; background:#f8f9fa; padding:5px; border-radius:5px;">נזק: <span id="stat-dmg" style="color:red; font-weight:bold;"></span> | מנקב: <span id="stat-prc" style="color:blue; font-weight:bold;"></span></p>
+                <button id="upg-btn" class="upg-btn"></button>
+                <button class="upg-btn" style="background:#dc3545; margin-top:20px;" onclick="sellTower(event)">מכור מגדל</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        let money = 350;
+        let lives = 100;
+        let currentRound = 1;
+        let roundInProgress = false;
+        let autoStart = false; // משתנה לשלבים אוטומטיים
+        let spawnQueue = [];
+        let spawnDelay = 0;
+        let gameOver = false;
+        let gameSpeedMultiplier = 1;
+        
+        let bloons = [];
+        let towers = [];
+        let projectiles = [];
+        let particles = []; 
+        let bananas = []; 
+        
+        let selectedBuildType = null;
+        let activeTower = null; 
+        let mouseX = 0;
+        let mouseY = 0;
+
+        const pools = [
+
+            { x: 550, y: 260, radius: 75 }  // בריכה שנייה (ימנית)
+        ];
+
+const cactuses = [
+    { x: 100, y: 100, size: 50 }, // גדל מ-20 ל-50
+    { x: 400, y: 350, size: 60 }, // גדל מ-25 ל-60
+    { x: 600, y: 150, size: 45 }, // גדל מ-18 ל-45
+    { x: 50, y: 450, size: 55 },  // גדל מ-22 ל-55
+    { x: 750, y: 400, size: 70 }
+];
+
+function generateSmoothPath() {
+    let newPath = [];
+    
+    // 1. התחלה
+    newPath.push({ x: -50, y: 250 });
+    newPath.push({ x: 100, y: 250 });
+    
+    // 2. עיקול עליון סביב בריכה 1 (מ-180 מעלות ל-0 מעלות)
+    const radius = 110; // המרחק של הכביש ממרכז הבריכה
+    for (let a = Math.PI; a >= 0; a -= 0.2) {
+        newPath.push({
+            x: 200 + Math.cos(a) * 100, // 200 זה ה-X של הבריכה
+            y: 250 - Math.sin(a) * 110  // 250 זה ה-Y, והוא עולה למעלה
+        });
+    }
+    
+    newPath.push({ x: 300, y: 250 });
+    newPath.push({ x: 450, y: 250 });
+    
+    // 3. עיקול תחתון סביב בריכה 2
+    for (let a = Math.PI; a <= Math.PI * 2; a += 0.2) {
+        newPath.push({
+            x: 550 + Math.cos(a) * 100, // 550 זה ה-X של הבריכה השנייה
+            y: 250 - Math.sin(a) * 110  // יורד למטה
+        });
+    }
+    
+    // 4. סיום
+    newPath.push({ x: 650, y: 250 });
+    newPath.push({ x: 850, y: 250 });
+    
+    return newPath;
+}
+
+const path = generateSmoothPath();
+
+        // מחירי הדמויות מעודכנים למחירים המקוריים המדויקים מ-BTD6
+        const TOWER_TYPES = {
+            'Dart': { cost: 200, range: 120, fireRate: 35, damage: 1, color: '#8B4513', radius: 15, pierce: 2 },
+            'Boomerang': { cost: 325, range: 140, fireRate: 45, damage: 1, color: '#d97b00', radius: 15, pierce: 3 },
+            'Tack': { cost: 280, range: 85, fireRate: 50, damage: 1, color: '#ff66b2', radius: 15, isTack: true, pierce: 1 },
+            'Ice': { cost: 500, range: 85, fireRate: 70, damage: 0, color: '#add8e6', radius: 16, isIce: true, freezeTime: 60 },
+            'Sniper': { cost: 350, range: 9999, fireRate: 90, damage: 2, color: '#4d4d4d', radius: 12, isSniper: true, pierce: 1 },
+            'Glue': { cost: 275, range: 110, fireRate: 50, damage: 0, color: '#ffb833', radius: 15, isGlue: true, pierce: 1, glueSlow: 0.5 },
+            'Wizard': { cost: 400, range: 130, fireRate: 40, damage: 1, color: '#8A2BE2', radius: 15, isWizard: true, pierce: 3 },
+            'Heli': { cost: 1000, range: 140, fireRate: 20, damage: 1, color: '#2E8B57', radius: 18, isHeli: true, pierce: 2 },
+            'Bomb': { cost: 525, range: 130, fireRate: 65, damage: 1, color: '#1a1a1a', radius: 16, isBomb: true, aoe: 60, pierce: 10 },
+            'Ninja': { cost: 500, range: 130, fireRate: 25, damage: 1, color: '#111111', radius: 14, pierce: 2 },
+            'Super': { cost: 2500, range: 220, fireRate: 4, damage: 1, color: '#0000ff', radius: 18, pierce: 1 },
+            'Alchemist': { cost: 395, range: 120, fireRate: 60, damage: 1, color: '#800080', radius: 15, isAlch: true, aoe: 40, pierce: 5, poisonDmg: 1 },
+            'Farm': { cost: 1250, range: 0, fireRate: 350, damage: 0, color: '#ffd700', radius: 25, isFarm: true, income: 40 },
+            'Village': { cost: 1200, range: 140, fireRate: 0, damage: 0, color: '#654321', radius: 20, isVillage: true, buffPower: 0.8 }
+        };
+
+        const BLOON_TYPES = {
+            'Red': { color: '#ff0000', speed: 1.0, hp: 1, radius: 10, rbe: 1, children: [] },
+            'Blue': { color: '#1E90FF', speed: 1.4, hp: 1, radius: 11, rbe: 2, children: ['Red'] },
+            'Green': { color: '#32CD32', speed: 1.8, hp: 1, radius: 12, rbe: 3, children: ['Blue'] },
+            'Yellow': { color: '#ffff00', speed: 2.2, hp: 1, radius: 13, rbe: 4, children: ['Green'] }, 
+            'Rainbow': { color: '#ff8c00', speed: 2.6, hp: 1, radius: 14, rbe: 47, children: ['Yellow', 'Yellow'] }, 
+            'Ceramic': { color: '#8b4513', speed: 2.8, hp: 10, radius: 15, rbe: 104, children: ['Rainbow', 'Rainbow'] },
+            'MOAB': { color: '#0000cd', speed: 1.0, hp: 200, radius: 30, rbe: 616, isBlimp: true, children: ['Ceramic', 'Ceramic', 'Ceramic', 'Ceramic'] }
+        };
+
+        function drawEntity(c, type, color, drawAngle, rotorAngle, extra = {}) {
+            c.save();
+            c.rotate(drawAngle);
+            
+            if (type === 'Heli') {
+                c.fillStyle = '#111'; c.fillRect(-22, -4, 15, 8); 
+                c.fillStyle = color; c.beginPath(); c.ellipse(0, 0, 14, 10, 0, 0, Math.PI*2); c.fill(); 
+                c.fillStyle = '#add8e6'; c.beginPath(); c.arc(8, 0, 6, 0, Math.PI*2); c.fill(); 
+                c.rotate(-drawAngle + (rotorAngle || 0)); 
+                if (extra.razor) {
+                    c.fillStyle = 'rgba(200, 200, 200, 0.9)'; 
+                    c.beginPath(); c.arc(0,0, 24, 0, Math.PI*2); c.lineWidth=1; c.strokeStyle='#ddd'; c.stroke();
+                    c.fillRect(-26, -3, 52, 6); c.fillRect(-3, -26, 6, 52);
+                } else {
+                    c.fillStyle = 'rgba(40, 40, 40, 0.8)'; c.fillRect(-24, -2, 48, 4); c.fillRect(-2, -24, 4, 48);
+                }
+            } else if (type === 'Tack') {
+                let tackColor = extra.tackSprayer ? '#32cd32' : '#ff66b2'; 
+                c.fillStyle = tackColor; c.beginPath(); c.arc(0, 0, 14, 0, Math.PI*2); c.fill();
+                c.fillStyle = '#333'; c.beginPath(); c.arc(0, 0, 8, 0, Math.PI*2); c.fill();
+                c.fillStyle = tackColor; c.fillRect(-3, -15, 6, 30); c.fillRect(-15, -3, 30, 6);
+            } else if (type === 'Bomb') {
+                c.fillStyle = '#5c4033'; c.fillRect(-10, -12, 10, 24); 
+                c.fillStyle = '#1a1a1a'; c.beginPath(); c.arc(0, 0, 10, 0, Math.PI*2); c.fill();
+                c.fillRect(0, -7, 16, 14); c.fillStyle = 'black'; c.fillRect(14, -5, 4, 10);
+                if (extra.heavyBombs) {
+                    c.fillStyle = '#cc0000'; c.fillRect(10, -5.5, 3, 11); 
+                }
+            } else if (type === 'Farm') {
+                c.fillStyle = '#8B4513'; c.fillRect(-5, 0, 10, 15); 
+                c.fillStyle = '#228B22'; 
+                c.beginPath(); c.arc(0, -5, 14, 0, Math.PI*2); c.fill();
+                c.beginPath(); c.arc(-10, 0, 12, 0, Math.PI*2); c.fill();
+                c.beginPath(); c.arc(10, 0, 12, 0, Math.PI*2); c.fill();
+                c.fillStyle = '#ffd700'; 
+                c.beginPath(); c.arc(-6, -2, 4, 0, Math.PI, false); c.fill();
+                c.beginPath(); c.arc(6, -2, 4, 0, Math.PI, false); c.fill();
+                if (extra.greaterProd) {
+                    c.beginPath(); c.arc(-3, -7, 4, 0, Math.PI, false); c.fill();
+                    c.beginPath(); c.arc(3, -7, 4, 0, Math.PI, false); c.fill();
+                }
+            } else if (type === 'Village') {
+                c.fillStyle = '#8b5a2b'; c.fillRect(-14, -10, 28, 24); 
+                c.fillStyle = '#3e2723'; c.fillRect(-6, 4, 12, 10); 
+                c.fillStyle = '#cd853f'; 
+                c.beginPath(); c.moveTo(-18, -10); c.lineTo(18, -10); c.lineTo(0, -26); c.fill();
+                c.strokeStyle = '#eee'; c.beginPath(); c.moveTo(0, -26); c.lineTo(0, -36); c.stroke(); 
+                c.fillStyle = '#ff3333'; c.fillRect(0, -36, 10, 6); 
+                if (extra.jungle) {
+                    c.fillStyle = '#f4a460'; c.fillRect(-8, -14, 6, 4); c.fillRect(2, -14, 6, 4);
+                }
+            } else {
+                let skinColor = type === 'Ice' ? '#add8e6' : '#8b5a2b';
+                let earColor = type === 'Ice' ? '#87ceeb' : '#6b4c3a';
+                let muzzleColor = type === 'Ice' ? '#e0ffff' : '#d4a373';
+
+                if (type === 'Super') {
+                    c.fillStyle = '#dc143c'; c.beginPath(); c.arc(-4, 0, 15, Math.PI/2, Math.PI*1.5); c.fill();
+                }
+
+                c.fillStyle = earColor;
+                c.beginPath(); c.arc(-2, -9, 5, 0, Math.PI*2); c.fill();
+                c.beginPath(); c.arc(-2, 9, 5, 0, Math.PI*2); c.fill();
+                c.fillStyle = muzzleColor; 
+                c.beginPath(); c.arc(-2, -9, 2.5, 0, Math.PI*2); c.fill();
+                c.beginPath(); c.arc(-2, 9, 2.5, 0, Math.PI*2); c.fill();
+
+                c.fillStyle = type === 'Ninja' ? '#222' : (type === 'Super' ? '#0000ff' : skinColor);
+                c.beginPath(); c.arc(0, 0, 11, 0, Math.PI*2); c.fill();
+
+                if (type === 'Ice' && extra.snapFreeze) {
+                    c.fillStyle = '#ffffff'; 
+                    c.beginPath(); c.moveTo(-8, -7); c.lineTo(-4, -14); c.lineTo(0, -7); c.fill();
+                    c.beginPath(); c.moveTo(0, -7); c.lineTo(4, -13); c.lineTo(8, -7); c.fill();
+                }
+                if (type === 'Dart' && extra.sharpShots) {
+                    c.strokeStyle = '#cc0000'; c.lineWidth = 2.5; 
+                    c.beginPath(); c.arc(0, 0, 11, Math.PI*0.8, Math.PI*1.2); c.stroke();
+                }
+
+                if (type === 'Ninja') {
+                    c.fillStyle = muzzleColor; c.fillRect(0, -4, 9, 8); 
+                    if (extra.doubleShot) {
+                        c.fillStyle = '#cc0000'; c.fillRect(-2, -8, 12, 3); 
+                    }
+                } else if (type === 'Super') {
+                    c.fillStyle = muzzleColor; c.beginPath(); c.ellipse(3, 0, 6, 7, 0, 0, Math.PI*2); c.fill();
+                } else {
+                    c.fillStyle = muzzleColor; c.beginPath(); c.ellipse(4, 0, 6, 8, 0, 0, Math.PI*2); c.fill();
+                }
+
+                if (type === 'Super' && extra.laser) {
+                    c.fillStyle = '#ff0000'; 
+                    if(c.roundRect) { c.beginPath(); c.roundRect(1, -5, 8, 10, 3); c.fill(); }
+                    else { c.fillRect(1, -5, 8, 10); }
+                    c.fillStyle = '#ffffff'; c.fillRect(4, -3, 2, 6); 
+                } else {
+                    c.fillStyle = 'black';
+                    if (type === 'Super') {
+                        c.fillStyle = 'white';
+                        c.beginPath(); c.arc(5, -3, 2, 0, Math.PI*2); c.fill();
+                        c.beginPath(); c.arc(5, 3, 2, 0, Math.PI*2); c.fill();
+                    } else if (type === 'Ninja') {
+                        c.beginPath(); c.arc(5, -2, 1.5, 0, Math.PI*2); c.fill();
+                        c.beginPath(); c.arc(5, 2, 1.5, 0, Math.PI*2); c.fill();
+                    } else {
+                        c.beginPath(); c.arc(5, -3, 1.5, 0, Math.PI*2); c.fill();
+                        c.beginPath(); c.arc(5, 3, 1.5, 0, Math.PI*2); c.fill();
+                    }
+                }
+
+                if (type === 'Boomerang') {
+                    c.fillStyle = extra.glaives ? '#C0C0C0' : '#ff8c00'; 
+                    c.fillRect(-2, -11, 4, 22);
+                    c.beginPath(); c.moveTo(0, 11); c.lineTo(-6, 16); c.lineTo(-2, 10); c.fill();
+                } else if (type === 'Sniper') {
+                    c.fillStyle = extra.fmj ? '#5c4033' : '#2e8b57'; 
+                    c.beginPath(); c.arc(-2, 0, 11, Math.PI/2, Math.PI*1.5); c.fill();
+                    c.fillRect(-2, -11, 6, 22); 
+                    c.fillStyle = '#444'; c.fillRect(4, 5, 18, 3); 
+                    if (extra.fmj) { c.fillStyle = '#111'; c.fillRect(8, 2, 5, 3); } 
+                } else if (type === 'Glue') {
+                    c.fillStyle = extra.corrosive ? '#32cd32' : '#ffcc00'; 
+                    c.beginPath(); c.arc(0, 0, 11.5, Math.PI/2, Math.PI*1.5); c.fill();
+                    c.fillStyle = '#aaa'; c.fillRect(6, 4, 10, 4); 
+                    c.fillStyle = extra.corrosive ? '#00ff00' : '#ffb833'; c.fillRect(16, 3, 4, 6); 
+                } else if (type === 'Wizard') {
+                    c.fillStyle = '#eeeeee';
+                    c.beginPath(); c.arc(5, -6, 4, 0, Math.PI*2); c.fill(); c.beginPath(); c.arc(9, -3, 4, 0, Math.PI*2); c.fill();
+                    c.beginPath(); c.arc(10, 0, 5, 0, Math.PI*2); c.fill(); c.beginPath(); c.arc(9, 3, 4, 0, Math.PI*2); c.fill();
+                    c.beginPath(); c.arc(5, 6, 4, 0, Math.PI*2); c.fill();
+                    c.fillStyle = '#4B0082'; c.beginPath(); c.ellipse(-2, 0, 4, 12, 0, 0, Math.PI*2); c.fill(); 
+                    c.beginPath(); c.moveTo(-2, -8); c.lineTo(-20, 0); c.lineTo(-2, 8); c.fill(); 
+                    c.fillStyle = 'gold'; c.beginPath(); c.arc(-10, 0, 2, 0, Math.PI*2); c.fill();
+                    if (extra.fireball) {
+                        c.strokeStyle = '#ff8c00'; c.lineWidth = 2.5; 
+                        c.beginPath(); c.moveTo(-9, -5); c.lineTo(-9, 5); c.stroke();
+                    }
+                } else if (type === 'Alchemist') {
+                    c.fillStyle = '#800080'; c.fillRect(2, -7, 4, 14); 
+                    c.fillStyle = extra.largerPotions ? '#ff8c00' : '#00ffff'; 
+                    c.beginPath(); c.arc(4, -3, 2.5, 0, Math.PI*2); c.fill();
+                    c.beginPath(); c.arc(4, 3, 2.5, 0, Math.PI*2); c.fill();
+                } else if (type === 'Dart') {
+                    c.fillStyle = '#ddd'; c.fillRect(6, 5, 8, 2); 
+                    c.fillStyle = 'red'; c.beginPath(); c.moveTo(14, 4); c.lineTo(18, 6); c.lineTo(14, 8); c.fill();
+                }
+            }
+            c.restore();
+        }
+
+        function generateMenuIcons() {
+            for (let type in TOWER_TYPES) {
+                let cvs = document.getElementById('icon-' + type);
+                if (!cvs) continue;
+                let c = cvs.getContext('2d');
+                let towerData = TOWER_TYPES[type];
+                
+                c.clearRect(0, 0, cvs.width, cvs.height);
+                c.translate(17, 17);
+                
+                if(type === 'Village') c.translate(0, 10);
+                if(type === 'Farm') c.translate(0, 5);
+                
+                c.scale(0.85, 0.85); 
+                drawEntity(c, type, towerData.color, 0, 0, {});
+            }
+        }
+
+        function toggleSpeed() {
+            let btn = document.getElementById('speed-btn');
+            if (gameSpeedMultiplier === 1) {
+                gameSpeedMultiplier = 3; btn.classList.add('fast'); btn.innerText = '⏭️ מהיר';
+            } else {
+                gameSpeedMultiplier = 1; btn.classList.remove('fast'); btn.innerText = '⏩ רגיל';
+            }
+        }
+
+        function toggleAutoStart() {
+            autoStart = !autoStart;
+            let btn = document.getElementById('auto-start-btn');
+            if (autoStart) {
+                btn.innerText = '🔁 אוטומטי: פועל';
+                btn.classList.add('on');
+                // אם המשחק לא פועל עכשיו ואנחנו לא בסוף המשחק - תתחיל מיד
+                if (!roundInProgress && currentRound <= 80) startRound();
+            } else {
+                btn.innerText = '▶️ אוטומטי: כבוי';
+                btn.classList.remove('on');
+            }
+        }
+
+        function distToSegment(px, py, x1, y1, x2, y2) {
+            let l2 = (x2 - x1) ** 2 + (y2 - y1) ** 2;
+            if (l2 === 0) return Math.hypot(px - x1, py - y1);
+            let t = ((px - x1) * (x2 - x1) + (py - y1) * (y2 - y1)) / l2;
+            t = Math.max(0, Math.min(1, t));
+            return Math.hypot(px - (x1 + t * (x2 - x1)), py - (y1 + t * (y2 - y1)));
+        }
+
+        function isValidPlacement(x, y, radius) {
+    // א. בדיקה שלא חורגים מגבולות המסך
+    if (x < radius || x > canvas.width - radius || y < radius || y > canvas.height - radius) {
+        return false;
+    }
+    
+    // ב. בדיקת התנגשות עם בריכות מים (אסור לבנות על המים)
+    // הוספתי הגנה למקרה שהבריכות לא הוגדרו נכון
+    if (typeof pools !== 'undefined' && pools.length > 0) {
+        for(let p of pools) {
+            // אם המרחק בין הדמות למרכז הבריכה קטן מהרדיוסים שלהם יחד - זה על המים
+            if (Math.hypot(x - p.x, y - p.y) < radius + p.radius) {
+                return false;
+            }
+        }
+    }
+
+    // ג. בדיקת התנגשות עם הכביש (אסור לבנות על האספלט)
+    if (typeof path !== 'undefined' && path.length > 0) {
+        for (let i = 0; i < path.length - 1; i++) {
+            // עובי הכביש הוא 50, אז רדיוס הכביש הוא 25
+            if (pointToLineDistance(x, y, path[i].x, path[i].y, path[i+1].x, path[i+1].y) < radius + 25) {
+                return false;
+            }
+        }
+    }
+
+    // ד. בדיקת התנגשות עם דמויות (מגדלים) אחרים שכבר קיימים
+    if (typeof towers !== 'undefined') {
+        for (let t of towers) {
+            if (Math.hypot(x - t.x, y - t.y) < radius + 15) {
+                return false;
+            }
+        }
+    }
+
+if (typeof cactuses !== 'undefined') {
+    for (let c of cactuses) {
+        if (Math.hypot(x - c.x, y - (c.y - c.size/2)) < radius + 15) {
+            return false;
+        }
+    }
+}
+
+    // אם עברנו את כל הבדיקות - המיקום חוקי!
+    return true;
+}
+
+// 2. פונקציית העזר החשובה לחישוב מרחק מהכביש (בלעדיה המשחק קורס!)
+function pointToLineDistance(px, py, x1, y1, x2, y2) {
+    const l2 = Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2);
+    if (l2 === 0) return Math.hypot(px - x1, py - y1);
+    let t = ((px - x1) * (x2 - x1) + (py - y1) * (y2 - y1)) / l2;
+    t = Math.max(0, Math.min(1, t));
+    return Math.hypot(px - (x1 + t * (x2 - x1)), py - (y1 + t * (y2 - y1)));
+}
+
+        function drawPath() {
+    // 1. רקע חול מדברי
+           ctx.fillStyle = '#F4C482';
+           ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // 2. ציור בריכות המים
+           ctx.fillStyle = '#4facfe'; // צבע מים תכלת
+           ctx.strokeStyle = '#278bc0'; // מסגרת כחולה לבריכה
+           ctx.lineWidth = 4;
+           for(let p of pools) {
+                 ctx.beginPath();
+                 ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                 ctx.fill();
+                 ctx.stroke();
+           }
+
+    // 3. ציור הכביש (אפור)
+           ctx.strokeStyle = '#555555';
+           ctx.lineWidth = 50;
+           ctx.lineCap = 'round';
+           ctx.lineJoin = 'round';
+           ctx.beginPath();
+           ctx.moveTo(path[0].x, path[0].y);
+           for (let i = 1; i < path.length; i++) {
+                 ctx.lineTo(path[i].x, path[i].y);
+           }
+           ctx.stroke();
+
+    // 4. ציור קו מקווקו צהוב באמצע הכביש
+           ctx.strokeStyle = '#FFD700';
+           ctx.lineWidth = 3;
+           ctx.setLineDash([20, 15]);
+           ctx.beginPath();
+           ctx.moveTo(path[0].x, path[0].y);
+           for (let i = 1; i < path.length; i++) {
+                 ctx.lineTo(path[i].x, path[i].y);
+           }
+           ctx.stroke();
+            ctx.setLineDash([]); // איפוס
+cactuses.forEach(c => {
+    drawCactus(c.x, c.y, c.size);
+});
+        }
+
+function drawCactus(x, y, size) {
+    ctx.fillStyle = '#2d5a27'; // ירוק כהה
+    
+    // הגוף המרכזי
+    ctx.beginPath();
+    ctx.roundRect(x - size/4, y - size, size/2, size, 10);
+    ctx.fill();
+    
+    // זרוע שמאל
+    ctx.beginPath();
+    ctx.roundRect(x - size/1.5, y - size/1.5, size/2, size/4, 5); // אופקי
+    ctx.roundRect(x - size/1.5, y - size/1.2, size/4, size/3, 5); // אנכי
+    ctx.fill();
+    
+    // זרוע ימין
+    ctx.beginPath();
+    ctx.roundRect(x + size/6, y - size/2, size/2, size/4, 5); // אופקי
+    ctx.roundRect(x + size/2, y - size/1.5, size/4, size/3, 5); // אנכי
+    ctx.fill();
+}
+
+        function updateMainUI() {
+            document.getElementById('money').innerText = Math.floor(money);
+            document.getElementById('lives').innerText = Math.max(0, lives);
+            document.getElementById('round').innerText = currentRound;
+            document.getElementById('start-btn').disabled = roundInProgress || currentRound > 80;
+            
+            updateUpgradePanel();
+        }
+
+        function updateUpgradePanel() {
+            let leftPanels = document.getElementById('leftPanels');
+            if (!activeTower) {
+                leftPanels.style.display = 'none';
+                return;
+            }
+            leftPanels.style.display = 'flex';
+            
+            let cvs = document.getElementById('upg-tower-icon');
+            let c = cvs.getContext('2d');
+            c.clearRect(0, 0, 80, 80);
+            c.save();
+            c.translate(40, 40);
+            c.scale(1.8, 1.8);
+            
+            let extraVisuals = { 
+                laser: activeTower.isLaser, 
+                razor: activeTower.hasRazorRotors, 
+                jungle: activeTower.hasJungleDrums,
+                sharpShots: activeTower.hasSharpShots,
+                glaives: activeTower.hasGlaives,
+                tackSprayer: activeTower.hasTackSprayer,
+                snapFreeze: activeTower.hasSnapFreeze,
+                corrosive: activeTower.hasCorrosive,
+                fmj: activeTower.hasFMJ,
+                doubleShot: activeTower.hasDoubleShot,
+                fireball: activeTower.hasFireball,
+                largerPotions: activeTower.hasLargerPotions,
+                heavyBombs: activeTower.hasHeavyBombs,
+                greaterProd: activeTower.hasGreaterProd
+            };
+            
+            drawEntity(c, activeTower.type, activeTower.color, 0, 0, extraVisuals);
+            c.restore();
+
+            document.getElementById('upg-title').innerText = activeTower.type;
+            document.getElementById('stat-dmg').innerText = activeTower.damage;
+            document.getElementById('stat-prc').innerText = activeTower.pierce || '-';
+
+            let btn = document.getElementById('upg-btn');
+            btn.onclick = null; 
+            btn.style.display = 'block';
+
+            let upgName = ''; let upgCost = 0; let checkVar = '';
+            
+            if (activeTower.type === 'Dart') { upgName = 'Sharp Shots'; upgCost = 140; checkVar = 'hasSharpShots'; }
+            else if (activeTower.type === 'Boomerang') { upgName = 'Glaives'; upgCost = 280; checkVar = 'hasGlaives'; }
+            else if (activeTower.type === 'Tack') { upgName = 'Tack Sprayer'; upgCost = 300; checkVar = 'hasTackSprayer'; }
+            else if (activeTower.type === 'Ice') { upgName = 'Snap Freeze'; upgCost = 250; checkVar = 'hasSnapFreeze'; }
+            else if (activeTower.type === 'Glue') { upgName = 'Corrosive Glue'; upgCost = 325; checkVar = 'hasCorrosive'; }
+            else if (activeTower.type === 'Sniper') { upgName = 'Full Metal Jacket'; upgCost = 350; checkVar = 'hasFMJ'; }
+            else if (activeTower.type === 'Ninja') { upgName = 'Double Shot'; upgCost = 850; checkVar = 'hasDoubleShot'; }
+            else if (activeTower.type === 'Heli') { upgName = 'Razor Rotors'; upgCost = 400; checkVar = 'hasRazorRotors'; }
+            else if (activeTower.type === 'Wizard') { upgName = 'Fireball'; upgCost = 300; checkVar = 'hasFireball'; }
+            else if (activeTower.type === 'Super') { upgName = 'Laser Blasts'; upgCost = 1700; checkVar = 'isLaser'; }
+            else if (activeTower.type === 'Alchemist') { upgName = 'Larger Potions'; upgCost = 250; checkVar = 'hasLargerPotions'; }
+            else if (activeTower.type === 'Bomb') { upgName = 'Heavy Bombs'; upgCost = 400; checkVar = 'hasHeavyBombs'; }
+            else if (activeTower.type === 'Farm') { upgName = 'Greater Prod.'; upgCost = 500; checkVar = 'hasGreaterProd'; }
+            else if (activeTower.type === 'Village') { upgName = 'Jungle Drums'; upgCost = 1500; checkVar = 'hasJungleDrums'; }
+
+            if (!activeTower[checkVar]) {
+                btn.innerText = `${upgName} (${upgCost} 💵)`;
+                btn.disabled = money < upgCost;
+                btn.onclick = () => {
+                    if (money >= upgCost) {
+                        money -= upgCost;
+                        activeTower[checkVar] = true;
+                        activeTower.invested += upgCost;
+                        
+                        if (activeTower.type === 'Dart') { activeTower.pierce = 4; }
+                        else if (activeTower.type === 'Boomerang') { activeTower.pierce = 10; }
+                        else if (activeTower.type === 'Sniper') { activeTower.damage += 2; }
+                        else if (activeTower.type === 'Super') { activeTower.pierce += 2; }
+                        else if (activeTower.type === 'Alchemist') { activeTower.aoe += 25; }
+                        else if (activeTower.type === 'Bomb') { activeTower.damage += 1; activeTower.pierce += 5; }
+                        else if (activeTower.type === 'Farm') { activeTower.baseFireRate *= 0.7; }
+                        
+                        updateMainUI();
+                    }
+                };
+            } else {
+                btn.innerText = `${upgName} (נקנה)`;
+                btn.disabled = true;
+            }
+        }
+
+        function enqueueBloons(type, count, delay) {
+            for(let i=0; i<count; i++) spawnQueue.push({type: type, delay: delay});
+        }
+
+const MAX_ROUNDS = 80;
+        const rounds = [];
+
+        for (let r = 1; r <= MAX_ROUNDS; r++) {
+            let roundData = {
+                reward: 100 + (r * 15), 
+                bloons: []
+            };
+            
+            let hpMod = 1 + Math.floor(r / 15) * 0.2; 
+            let speedMod = 1 + Math.floor(r / 10) * 0.1; 
+            
+            if (r <= 5) {
+                roundData.bloons.push({type: 'Red', count: r * 10, delay: 30});
+                if (r >= 3) roundData.bloons.push({type: 'Blue', count: r * 3, delay: 30});
+            }
+            else if (r <= 15) {
+                roundData.bloons.push({type: 'Blue', count: r * 5, delay: 25});
+                roundData.bloons.push({type: 'Green', count: r * 3, delay: 25});
+            }
+            else if (r <= 25) {
+                roundData.bloons.push({type: 'Green', count: r * 4, delay: 20});
+                roundData.bloons.push({type: 'Yellow', count: r * 3, delay: 20});
+            }
+            else if (r <= 35) {
+                roundData.bloons.push({type: 'Yellow', count: r * 4, delay: 15});
+                roundData.bloons.push({type: 'Rainbow', count: Math.floor(r / 2), delay: 20});
+            }
+            else if (r < 40) {
+                roundData.bloons.push({type: 'Rainbow', count: r * 3, delay: 15});
+                roundData.bloons.push({type: 'Ceramic', count: Math.floor(r / 3), delay: 25});
+            }
+            else if (r === 40) {
+                roundData.bloons.push({type: 'Ceramic', count: 30, delay: 15});
+                roundData.bloons.push({type: 'MOAB', count: 1, delay: 60});
+            }
+            else if (r < 50) {
+                roundData.bloons.push({type: 'Rainbow', count: r * 2, delay: 12, hpMod: hpMod, speedMod: speedMod});
+                roundData.bloons.push({type: 'Ceramic', count: r, delay: 15, hpMod: hpMod, speedMod: speedMod});
+                if (r % 2 === 0) {
+                    roundData.bloons.push({type: 'MOAB', count: Math.floor((r - 40) / 2), delay: 50, hpMod: hpMod, speedMod: speedMod});
+                }
+            }
+            else if (r < 60) {
+                roundData.bloons.push({type: 'Ceramic', count: Math.floor(r * 1.5), delay: 10, hpMod: hpMod, speedMod: speedMod});
+                roundData.bloons.push({type: 'MOAB', count: Math.floor((r - 40) / 1.5), delay: 35, hpMod: hpMod, speedMod: speedMod});
+            }
+            else if (r === 60) {
+                roundData.bloons.push({type: 'Ceramic', count: 40, delay: 10, hpMod: hpMod, speedMod: speedMod});
+                roundData.bloons.push({type: 'RedMOAB', count: 1, delay: 60, hpMod: hpMod, speedMod: speedMod});
+            }
+            else if (r < 80) {
+                roundData.bloons.push({type: 'Ceramic', count: r * 2, delay: 8, hpMod: hpMod, speedMod: speedMod});
+                roundData.bloons.push({type: 'MOAB', count: Math.floor(r / 3), delay: 25, hpMod: hpMod, speedMod: speedMod});
+                if (r % 4 === 0) {
+                    roundData.bloons.push({type: 'RedMOAB', count: Math.floor((r - 60) / 4) + 1, delay: 45, hpMod: hpMod, speedMod: speedMod});
+                }
+            }
+            else if (r === 80) {
+                roundData.bloons.push({type: 'Ceramic', count: 100, delay: 6, hpMod: hpMod, speedMod: speedMod});
+                roundData.bloons.push({type: 'RedMOAB', count: 5, delay: 30, hpMod: hpMod, speedMod: speedMod});
+            }
+    rounds.push(roundData);
+}
+
+        function startRound() {
+        try {
+            if (roundInProgress || gameOver) return;
+            
+            let actualRound = currentRound;
+            if (actualRound < 1) actualRound = 1;
+            if (actualRound > MAX_ROUNDS) return;
+
+            let rData = rounds[actualRound - 1];
+            
+            if (!rData || !rData.bloons) {
+                console.error("שגיאה: חסרים נתונים לסיבוב " + actualRound);
+                return; 
+            }
+
+            roundInProgress = true; 
+            spawnQueue.length = 0; 
+
+            rData.bloons.forEach(group => {
+                for (let i = 0; i < group.count; i++) {
+                    spawnQueue.push({
+                        type: group.type,
+                        delay: group.delay,
+                        hpMod: group.hpMod || 1,
+                        speedMod: group.speedMod || 1
+                    });
+                }
+            });
+
+            spawnDelay = 30; 
+
+            let startBtn = document.getElementById('start-btn');
+            if (startBtn) startBtn.disabled = true;
+
+            updateMainUI();
+            
+        } catch (error) {
+            console.error("תקלה בטעינת הסיבוב:", error);
+        }
+    }
+
+        function selectTower(type) {
+            selectedBuildType = type; 
+            document.querySelectorAll('.tower-btn').forEach(btn => btn.classList.remove('selected'));
+            if(type) document.getElementById('btn-' + type).classList.add('selected');
+        }
+
+        function sellTower(event) {
+            if (event) event.stopPropagation(); 
+            if (!activeTower) return;
+            
+            money += Math.floor(activeTower.invested * 0.7); 
+            
+            const index = towers.indexOf(activeTower);
+            if (index > -1) {
+                towers.splice(index, 1);
+            }
+            
+            activeTower = null; 
+            updateMainUI();
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Backspace' || e.key === 'Delete') {
+                if (activeTower) sellTower();
+            }
+            if (e.key === 'Escape') {
+                activeTower = null;
+                selectedBuildType = null;
+                document.querySelectorAll('.tower-btn').forEach(btn => btn.classList.remove('selected'));
+                updateMainUI();
+            }
+        });
+
+        class Bloon {
+            constructor(type, startX, startY, startWaypoint) {
+                this.type = type; const data = BLOON_TYPES[type];
+                this.x = startX !== undefined ? startX + (Math.random()*6-3) : path[0].x;
+                this.y = startY !== undefined ? startY + (Math.random()*6-3) : path[0].y;
+                this.waypointIndex = startWaypoint !== undefined ? startWaypoint : 1;
+                this.hp = data.hp; this.baseSpeed = data.speed; this.radius = data.radius; 
+                this.color = data.color; this.isBlimp = data.isBlimp || false;
+                this.rbe = data.rbe; this.children = data.children;
+                this.frozenTimer = 0; this.glueTimer = 0; this.glueSlow = 1; this.poisonTimer = 0; this.poisonDmg = 0;
+            }
+            update() {
+                let currentSpeed = this.baseSpeed;
+                if(this.frozenTimer > 0) { currentSpeed = 0; this.frozenTimer--; }
+                else if(this.glueTimer > 0) { currentSpeed *= this.glueSlow; this.glueTimer--; }
+
+                if(this.poisonTimer > 0) {
+                    if(this.poisonTimer % 30 === 0) damageBloon(this, this.poisonDmg);
+                    this.poisonTimer--;
+                }
+
+                let target = path[this.waypointIndex];
+                let dx = target.x - this.x; let dy = target.y - this.y;
+                let distance = Math.sqrt(dx*dx + dy*dy);
+                
+                if(distance < currentSpeed) {
+                    this.waypointIndex++;
+                    if(this.waypointIndex >= path.length) {
+                        lives -= this.rbe; this.hp = 0; this.poppedByEnd = true;
+                        if(lives <= 0) { lives = 0; gameOver = true; alert("הפסדת! נגמרו לך החיים. רענן את העמוד כדי לנסות שוב."); }
+                        updateMainUI();
+                    }
+                } else if (currentSpeed > 0) {
+                    this.x += (dx / distance) * currentSpeed; this.y += (dy / distance) * currentSpeed;
+                }
+            }
+            draw() {
+                ctx.save(); ctx.translate(this.x, this.y);
+                if (this.frozenTimer > 0) ctx.fillStyle = '#add8e6';
+                else if (this.glueTimer > 0) ctx.fillStyle = '#ffb833';
+                else ctx.fillStyle = this.color;
+                
+                ctx.strokeStyle = this.poisonTimer > 0 ? '#32cd32' : 'black'; 
+                ctx.lineWidth = this.isBlimp || this.poisonTimer > 0 ? 3 : 1.5; 
+
+                if (this.isBlimp) {
+                    ctx.beginPath(); ctx.ellipse(0, 0, this.radius, this.radius * 0.5, 0, 0, Math.PI * 2);
+                    ctx.fill(); ctx.stroke();
+                    ctx.fillStyle = 'white';
+                    ctx.fillRect(-this.radius * 0.4, -this.radius * 0.45, this.radius * 0.15, this.radius * 0.9);
+                    ctx.fillRect(this.radius * 0.25, -this.radius * 0.45, this.radius * 0.15, this.radius * 0.9);
+                    ctx.fillStyle = 'gray'; ctx.beginPath(); ctx.moveTo(-this.radius, 0);
+                    ctx.lineTo(-this.radius - 10, -10); ctx.lineTo(-this.radius - 10, 10);
+                    ctx.closePath(); ctx.fill(); ctx.stroke();
+                } else {
+                    ctx.beginPath(); ctx.moveTo(0, -this.radius);
+                    ctx.bezierCurveTo(this.radius, -this.radius, this.radius, this.radius * 0.5, 0, this.radius);
+                    ctx.bezierCurveTo(-this.radius, this.radius * 0.5, -this.radius, -this.radius, 0, -this.radius);
+                    ctx.fill(); ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(0, this.radius);
+                    ctx.lineTo(-this.radius * 0.3, this.radius + 4); ctx.lineTo(this.radius * 0.3, this.radius + 4);
+                    ctx.closePath(); ctx.fill(); ctx.stroke();
+                    ctx.beginPath(); ctx.ellipse(-this.radius*0.3, -this.radius*0.4, this.radius*0.15, this.radius*0.3, Math.PI/6, 0, Math.PI*2);
+                    ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.fill();
+                }
+                ctx.restore();
+            }
+        }
+
+        class Tower {
+            constructor(type, x, y) {
+                this.type = type; this.x = x; this.y = y; const data = TOWER_TYPES[type];
+                this.range = data.range; this.baseFireRate = data.fireRate; this.damage = data.damage;
+                this.color = data.color; this.radius = data.radius; this.pierce = data.pierce || 1;
+                this.isFarm = data.isFarm; this.isVillage = data.isVillage; this.isIce = data.isIce;
+                this.isTack = data.isTack; this.isSniper = data.isSniper; this.isBomb = data.isBomb;
+                this.isGlue = data.isGlue; this.isAlch = data.isAlch; 
+                this.isWizard = data.isWizard; this.isHeli = data.isHeli;
+                this.aoe = data.aoe; this.income = data.income; 
+                this.freezeTime = data.freezeTime; this.glueSlow = data.glueSlow;
+                this.poisonDmg = data.poisonDmg; this.buffPower = data.buffPower;
+                this.cooldown = 0; this.buffed = false; this.buffedJungle = false; this.angle = 0; 
+                this.invested = data.cost; 
+                
+                this.hasSharpShots = false;
+                this.hasGlaives = false;
+                this.hasTackSprayer = false;
+                this.hasSnapFreeze = false;
+                this.hasCorrosive = false;
+                this.hasFMJ = false;
+                this.hasDoubleShot = false;
+                this.hasRazorRotors = false;
+                this.razorCooldown = 0;
+                this.hasFireball = false;
+                this.fireballTimer = 0;
+                this.isLaser = false;
+                this.hasLargerPotions = false;
+                this.hasHeavyBombs = false;
+                this.hasGreaterProd = false;
+                this.hasJungleDrums = false;
+                
+                if (this.isHeli) {
+                    this.heliX = x; this.heliY = y; this.heliSpeed = 4;
+                    this.rotorAngle = 0; this.targetAngle = 0;
+                }
+            }
+            update() {
+                if (this.isFarm && !roundInProgress) return; 
+
+                let currentFireRate = this.buffedJungle ? Math.floor(this.baseFireRate * 0.65) : (this.buffed ? Math.floor(this.baseFireRate * 0.8) : Math.floor(this.baseFireRate));
+                
+                if (this.hasFireball && this.fireballTimer > 0) {
+                    this.fireballTimer--;
+                    if (this.fireballTimer <= 0) {
+                        let target = null;
+                        for (let b of bloons) {
+                            if (Math.hypot(b.x - this.x, b.y - this.y) <= this.range) { target = b; break; }
+                        }
+                        if (target) {
+                            let angle = Math.atan2(target.y - this.y, target.x - this.x);
+                            let fb = new Projectile(this, target, angle, this.x, this.y);
+                            fb.isWizard = false; fb.isFireball = true; fb.speed = 12; fb.aoe = 30; fb.damage = 1; 
+                            projectiles.push(fb);
+                        }
+                    }
+                }
+
+                if (this.isHeli) {
+                    if (this.hasRazorRotors) {
+                        if (this.razorCooldown <= 0) {
+                            let hit = false;
+                            for (let b of bloons) {
+                                if (Math.hypot(b.x - this.heliX, b.y - this.heliY) <= 30) {
+                                    damageBloon(b, 1); hit = true;
+                                }
+                            }
+                            if (hit) this.razorCooldown = 15;
+                        } else {
+                            this.razorCooldown--;
+                        }
+                    }
+
+                    if(this.cooldown > 0) this.cooldown--;
+                    
+                    let targetBloon = null; let maxProgress = -1;
+                    for (let b of bloons) {
+                        let progress = b.waypointIndex * 1000 - distToSegment(b.x, b.y, path[b.waypointIndex-1]?.x||path[0].x, path[b.waypointIndex-1]?.y||path[0].y, path[b.waypointIndex].x, path[b.waypointIndex].y);
+                        if (progress > maxProgress) { targetBloon = b; maxProgress = progress; }
+                    }
+
+                    let moveX = targetBloon ? targetBloon.x : this.x;
+                    let moveY = targetBloon ? targetBloon.y : this.y;
+                    let dx = moveX - this.heliX; let dy = moveY - this.heliY; let dist = Math.hypot(dx, dy);
+
+                    if (dist > this.heliSpeed) {
+                        this.heliX += (dx / dist) * this.heliSpeed; this.heliY += (dy / dist) * this.heliSpeed;
+                    } else {
+                        this.heliX = moveX; this.heliY = moveY;
+                    }
+                    if (dx !== 0 || dy !== 0) this.targetAngle = Math.atan2(dy, dx);
+
+                    if (this.cooldown <= 0 && targetBloon) {
+                        let shootDist = Math.hypot(targetBloon.x - this.heliX, targetBloon.y - this.heliY);
+                        if (shootDist <= this.range) {
+                            let angle = Math.atan2(targetBloon.y - this.heliY, targetBloon.x - this.heliX);
+                            projectiles.push(new Projectile(this, targetBloon, angle, this.heliX, this.heliY));
+                            this.cooldown = currentFireRate;
+                        }
+                    }
+                    return; 
+                }
+
+                if(this.cooldown > 0) this.cooldown--;
+                if(this.cooldown <= 0) {
+                    if(this.isVillage) return; 
+                    if(this.isFarm) {
+                        bananas.push(new Banana(this.x, this.y, this.income)); this.cooldown = currentFireRate; return;
+                    }
+                    if(this.isIce) {
+                        let hitAny = false;
+                        for(let b of bloons) {
+                            if(Math.hypot(b.x - this.x, b.y - this.y) <= this.range) { 
+                                b.frozenTimer = this.freezeTime; hitAny = true; 
+                                if (this.hasSnapFreeze) damageBloon(b, 1); 
+                            }
+                        }
+                        if(hitAny) {
+                            particles.push({x: this.x, y: this.y, isIceNova: true, radius: this.range, life: 20});
+                            this.cooldown = currentFireRate;
+                        }
+                        return;
+                    }
+                    let targetFound = null;
+                    for(let b of bloons) {
+                        if(this.isSniper || Math.hypot(b.x - this.x, b.y - this.y) <= this.range) { targetFound = b; break; }
+                    }
+                    if(targetFound) {
+                        this.angle = Math.atan2(targetFound.y - this.y, targetFound.x - this.x);
+
+                        if(this.isSniper) {
+                            particles.push({isLine: true, x1: this.x, y1: this.y, x2: targetFound.x, y2: targetFound.y, life: 8});
+                            particles.push({x: targetFound.x, y: targetFound.y, isExplosion: true, color: 'rgba(255, 255, 0, 0.7)', radius: 12, life: 8});
+                            let currentPierce = this.pierce;
+                            for(let b of bloons) {
+                                if(Math.hypot(b.x - targetFound.x, b.y - targetFound.y) < 50) {
+                                    damageBloon(b, this.damage); currentPierce--; if(currentPierce <= 0) break;
+                                }
+                            }
+                        } else if(this.isTack) {
+                            let count = this.hasTackSprayer ? 16 : 8; 
+                            for(let i=0; i<count; i++) projectiles.push(new Projectile(this, targetFound, i * (Math.PI*2 / count)));
+                        } else if(this.type === 'Boomerang') {
+                            projectiles.push(new Projectile(this, null, this.angle));
+                        } else if (this.type === 'Ninja' && this.hasDoubleShot) {
+                            projectiles.push(new Projectile(this, targetFound, this.angle - 0.15));
+                            projectiles.push(new Projectile(this, targetFound, this.angle + 0.15));
+                        } else if (this.isWizard) {
+                            projectiles.push(new Projectile(this, targetFound, null));
+                            if (this.hasFireball) this.fireballTimer = 15; 
+                        } else {
+                            projectiles.push(new Projectile(this, targetFound, null));
+                        }
+                        this.cooldown = currentFireRate;
+                    }
+                }
+            }
+
+            draw() {
+                if (this.isHeli) {
+                    ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                    ctx.fillStyle = '#444'; ctx.fill(); ctx.strokeStyle = this.buffedJungle ? 'limegreen' : (this.buffed ? 'gold' : '#222'); ctx.lineWidth = 3; ctx.stroke();
+                    ctx.fillStyle = '#fff'; ctx.font = 'bold 20px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                    ctx.fillText('H', this.x, this.y);
+
+                    this.rotorAngle += 0.4;
+                    ctx.save(); ctx.translate(this.heliX, this.heliY); 
+                    let extraVisuals = { razor: this.hasRazorRotors };
+                    drawEntity(ctx, 'Heli', this.color, this.targetAngle, this.rotorAngle, extraVisuals);
+                    ctx.restore();
+
+                    if (activeTower === this) {
+                        ctx.beginPath(); ctx.arc(this.heliX, this.heliY, this.range, 0, Math.PI * 2);
+                        ctx.fillStyle = 'rgba(0, 0, 0, 0.15)'; ctx.fill(); ctx.strokeStyle = 'white'; ctx.lineWidth = 1; ctx.stroke();
+                    }
+                    return; 
+                }
+
+                ctx.save();
+                ctx.translate(this.x, this.y);
+
+                if (this.buffed || this.buffedJungle) {
+                    ctx.beginPath(); ctx.arc(0, 0, this.radius + 2, 0, Math.PI * 2);
+                    ctx.strokeStyle = this.buffedJungle ? 'limegreen' : 'gold'; ctx.lineWidth = this.buffedJungle ? 4 : 3; ctx.stroke();
+                }
+
+                let drawAngle = this.angle || 0;
+                let extraVisuals = { 
+                    laser: this.isLaser, glaives: this.hasGlaives, jungle: this.hasJungleDrums,
+                    sharpShots: this.hasSharpShots, tackSprayer: this.hasTackSprayer,
+                    snapFreeze: this.hasSnapFreeze, corrosive: this.hasCorrosive,
+                    fmj: this.hasFMJ, doubleShot: this.hasDoubleShot, fireball: this.hasFireball,
+                    largerPotions: this.hasLargerPotions, heavyBombs: this.hasHeavyBombs, greaterProd: this.hasGreaterProd
+                };
+                drawEntity(ctx, this.type, this.color, drawAngle, 0, extraVisuals);
+
+                ctx.restore();
+
+                if (activeTower === this) {
+                    if (this.range < 2000) { 
+                        ctx.beginPath(); ctx.arc(this.x, this.y, this.range, 0, Math.PI * 2);
+                        ctx.fillStyle = 'rgba(0, 0, 0, 0.15)'; ctx.fill();
+                        ctx.strokeStyle = 'white'; ctx.lineWidth = 1; ctx.stroke();
+                    } else {
+                        ctx.beginPath(); ctx.arc(this.x, this.y, this.radius + 8, 0, Math.PI * 2);
+                        ctx.strokeStyle = 'white'; ctx.lineWidth = 2; ctx.setLineDash([5, 5]); ctx.stroke(); ctx.setLineDash([]);
+                    }
+                }
+            }
+        }
+
+        class Projectile {
+            constructor(tower, target, angle, startX, startY) {
+                this.x = startX !== undefined ? startX : tower.x; this.y = startY !== undefined ? startY : tower.y; 
+                this.startX = this.x; this.startY = this.y; this.target = target;
+                this.damage = tower.damage; this.isBomb = tower.isBomb; this.aoe = tower.aoe;
+                this.isGlue = tower.isGlue; this.isAlch = tower.isAlch; this.isWizard = tower.isWizard;
+                this.glueSlow = tower.glueSlow; this.poisonDmg = tower.poisonDmg; this.pierce = tower.pierce;
+                this.isLaser = tower.isLaser;
+                this.isFireball = false;
+                this.hasGlaives = tower.hasGlaives;
+                this.hasCorrosive = tower.hasCorrosive;
+                
+                this.speed = tower.type === 'Ninja' ? 15 : (tower.isHeli ? 12 : 10); 
+                if (this.isLaser) this.speed = 25; 
+                
+                this.active = true; this.hitList = [];
+                this.maxRange = tower.range; this.isTack = tower.isTack; this.isBoomerang = tower.type === 'Boomerang';
+
+                if(this.isBoomerang) {
+                    this.angle = angle; this.time = 0; this.maxRange = tower.range * 1.1; 
+                } else if(angle !== null) { 
+                    this.vx = Math.cos(angle) * this.speed; this.vy = Math.sin(angle) * this.speed; 
+                }
+            }
+            update() {
+                if (this.isBoomerang) {
+                    this.time++; let maxTime = 40; if (this.time > maxTime) { this.active = false; return; }
+                    let t = this.time / maxTime; let dirX = Math.cos(this.angle); let dirY = Math.sin(this.angle);
+                    let perpX = -dirY; let perpY = dirX; let dist = Math.sin(t * Math.PI) * this.maxRange; let curve = Math.sin(t * Math.PI) * 70; 
+                    this.x = this.startX + dirX * dist + perpX * curve; this.y = this.startY + dirY * dist + perpY * curve;
+
+                    for(let b of bloons) {
+                        if(!this.hitList.includes(b) && Math.hypot(b.x - this.x, b.y - this.y) < b.radius + 15) {
+                            this.hitList.push(b); damageBloon(b, this.damage);
+                            this.pierce--; if(this.pierce <= 0) { this.active = false; break; }
+                        }
+                    }
+                } 
+                else if(this.vx !== undefined) {
+                    this.x += this.vx; this.y += this.vy;
+                    if(this.x < 0 || this.x > canvas.width || this.y < 0 || this.y > canvas.height) this.active = false;
+                    if(this.isTack && Math.hypot(this.x - this.startX, this.y - this.startY) > this.maxRange) this.active = false;
+
+                    for(let b of bloons) {
+                        if(!this.hitList.includes(b) && Math.hypot(b.x - this.x, b.y - this.y) < b.radius + 3) {
+                            
+                            if (this.isFireball) {
+                                particles.push({x: this.x, y: this.y, isExplosion: true, color: 'rgba(255, 69, 0, 0.8)', radius: this.aoe, life: 15});
+                                for (let b2 of bloons) {
+                                    if (Math.hypot(b2.x - this.x, b2.y - this.y) <= this.aoe) damageBloon(b2, this.damage);
+                                }
+                                this.active = false; 
+                                break; 
+                            } else {
+                                this.hitList.push(b); damageBloon(b, this.damage);
+                                this.pierce--; if(this.pierce <= 0) { this.active = false; break; }
+                            }
+                        }
+                    }
+                } else {
+                    if(this.target.hp <= 0) { this.active = false; return; }
+                    let dx = this.target.x - this.x; let dy = this.target.y - this.y; let distance = Math.sqrt(dx*dx + dy*dy);
+                    
+                    if(distance < this.speed + this.target.radius) {
+                        if(this.isBomb || this.isAlch) {
+                            let color = this.isAlch ? 'rgba(128, 0, 128, 0.5)' : 'rgba(255, 69, 0, 0.5)';
+                            particles.push({x: this.x, y: this.y, isExplosion: true, color: color, radius: this.aoe, life: 20});
+                            let currentPierce = this.pierce;
+                            for(let b of bloons) {
+                                if(Math.hypot(b.x - this.x, b.y - this.y) <= this.aoe) {
+                                    damageBloon(b, this.damage);
+                                    if(this.isAlch) { b.poisonTimer = 120; b.poisonDmg = this.poisonDmg; }
+                                    currentPierce--; if(currentPierce <= 0) break;
+                                }
+                            }
+                            this.active = false;
+                        } else {
+                            if(!this.hitList.includes(this.target)) {
+                                this.hitList.push(this.target); damageBloon(this.target, this.damage);
+                                if(this.isGlue) { 
+                                    this.target.glueTimer = 180; this.target.glueSlow = this.glueSlow; 
+                                    if (this.hasCorrosive) { this.target.poisonTimer = 180; this.target.poisonDmg = 1; }
+                                }
+                                this.pierce--;
+                            }
+                            if(this.pierce <= 0) this.active = false;
+                            else {
+                                let newTarget = bloons.find(b => !this.hitList.includes(b) && Math.hypot(b.x - this.x, b.y - this.y) <= 80);
+                                if(newTarget) this.target = newTarget; else this.active = false;
+                            }
+                        }
+                    } else {
+                        this.x += (dx / distance) * this.speed; this.y += (dy / distance) * this.speed;
+                    }
+                }
+            }
+            
+            draw() {
+                ctx.save(); ctx.translate(this.x, this.y);
+                if (this.isBoomerang) {
+                    ctx.rotate(this.time * 0.4); 
+                    if (this.hasGlaives) {
+                        ctx.fillStyle = '#C0C0C0'; 
+                        ctx.beginPath(); ctx.moveTo(0,-10); ctx.lineTo(3,-3); ctx.lineTo(10,0); ctx.lineTo(3,3); ctx.lineTo(0,10); ctx.lineTo(-3,3); ctx.lineTo(-10,0); ctx.lineTo(-3,-3); ctx.fill();
+                    } else {
+                        ctx.fillStyle = '#8B4513'; ctx.beginPath(); ctx.arc(0, 0, 10, 0, Math.PI, false); ctx.arc(0, -2, 8, Math.PI, 0, true); ctx.fill();
+                    }
+                } else if (this.isTack) {
+                    let angle = Math.atan2(this.vy, this.vx); ctx.rotate(angle);
+                    ctx.fillStyle = '#ccc'; ctx.fillRect(-2, -1, 6, 2); ctx.fillStyle = '#444'; ctx.fillRect(-4, -4, 2, 8); 
+                } else if (this.speed === 15 && !this.isWizard && !this.isLaser) { 
+                    ctx.rotate((this.x + this.y) * 0.1); ctx.fillStyle = '#eee'; ctx.strokeStyle = '#333'; ctx.lineWidth = 1;
+                    ctx.beginPath(); ctx.moveTo(0, -8); ctx.lineTo(2, -2); ctx.lineTo(8, 0); ctx.lineTo(2, 2); ctx.lineTo(0, 8); ctx.lineTo(-2, 2); ctx.lineTo(-8, 0); ctx.lineTo(-2, -2); ctx.closePath(); ctx.fill(); ctx.stroke();
+                } else if (this.isBomb) {
+                    ctx.fillStyle = 'black'; ctx.beginPath(); ctx.arc(0, 0, 5, 0, Math.PI * 2); ctx.fill();
+                    ctx.strokeStyle = 'white'; ctx.beginPath(); ctx.moveTo(4, -4); ctx.lineTo(7, -7); ctx.stroke();
+                } else if (this.isGlue || this.isAlch) {
+                    ctx.beginPath(); ctx.arc(0, 0, 4, 0, Math.PI * 2); ctx.fillStyle = this.isGlue ? '#ffb833' : '#800080'; ctx.fill();
+                } else if (this.isFireball) {
+                    ctx.beginPath(); ctx.arc(0, 0, 6, 0, Math.PI * 2); ctx.fillStyle = '#ff4500'; ctx.fill();
+                    ctx.beginPath(); ctx.arc(0, 0, 3, 0, Math.PI * 2); ctx.fillStyle = '#ffff00'; ctx.fill();
+                } else if (this.isWizard) {
+                    ctx.beginPath(); ctx.arc(0, 0, 7, 0, Math.PI * 2); ctx.fillStyle = '#ff00ff'; ctx.fill();
+                    ctx.beginPath(); ctx.arc(0, 0, 3, 0, Math.PI * 2); ctx.fillStyle = '#ffff00'; ctx.fill();
+                } else if (this.isLaser) {
+                    let angle = 0;
+                    if (this.vx !== undefined && this.vy !== undefined) angle = Math.atan2(this.vy, this.vx);
+                    else if (this.target) angle = Math.atan2(this.target.y - this.y, this.target.x - this.x);
+                    ctx.rotate(angle); 
+                    ctx.strokeStyle = '#ff3333'; ctx.lineWidth = 4; ctx.lineCap = 'round';
+                    ctx.beginPath(); ctx.moveTo(-15, 0); ctx.lineTo(15, 0); ctx.stroke();
+                    ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2; ctx.stroke(); 
+                } else {
+                    let angle = 0;
+                    if (this.vx !== undefined && this.vy !== undefined) angle = Math.atan2(this.vy, this.vx);
+                    else if (this.target) angle = Math.atan2(this.target.y - this.y, this.target.x - this.x);
+                    ctx.rotate(angle); ctx.fillStyle = '#8B4513'; ctx.fillRect(-6, -1, 10, 2); 
+                    ctx.fillStyle = '#eee'; ctx.beginPath(); ctx.moveTo(4, -3); ctx.lineTo(10, 0); ctx.lineTo(4, 3); ctx.fill(); 
+                }
+                ctx.restore();
+            }
+        }
+
+        class Banana {
+            constructor(x, y, value) {
+                this.x = x + (Math.random() * 50 - 25); this.y = y + (Math.random() * 50 - 25);
+                this.value = value; this.life = 600; this.radius = 12;
+            }
+            draw() {
+                ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(-0.5); ctx.fillStyle = '#ffe135'; 
+                ctx.beginPath(); ctx.arc(0, 0, this.radius, 0, Math.PI, false); ctx.arc(0, -3, this.radius - 3, Math.PI, 0, true); ctx.fill();
+                ctx.strokeStyle = '#d4af37'; ctx.lineWidth = 1; ctx.stroke(); ctx.restore();
+            }
+        }
+
+        function damageBloon(b, amount) {
+            if (amount <= 0 || b.hp <= 0) return;
+            
+            if (b.isBlimp) {
+                b.hp -= amount;
+                if (b.hp <= 0 && !b.poppedByEnd) {
+                    money += 10;
+                    for (let childType of b.children) bloons.push(new Bloon(childType, b.x, b.y, b.waypointIndex));
+                }
+            } else {
+                let remainingDamage = amount;
+                while (remainingDamage > 0 && b.hp > 0) {
+                    b.hp -= 1; 
+                    remainingDamage -= 1;
+                    money += 1; 
+                    
+                    if (b.hp <= 0) {
+                        if (b.children.length === 1) {
+                            let nextType = b.children[0];
+                            let data = BLOON_TYPES[nextType];
+                            b.type = nextType;
+                            b.hp = data.hp;
+                            b.baseSpeed = data.speed;
+                            b.radius = data.radius;
+                            b.color = data.color;
+                            b.children = data.children;
+                        } else if (b.children.length > 1) {
+                            for (let childType of b.children) {
+                                bloons.push(new Bloon(childType, b.x, b.y, b.waypointIndex));
+                            }
+                            break; 
+                        } else {
+                            break;
+                        }
+                    }
+                }
+            }
+            updateMainUI();
+        }
+
+        function updateGame() {
+            if(roundInProgress) {
+                if(spawnQueue.length > 0) {
+                    if(spawnDelay <= 0) {
+                        let next = spawnQueue.shift(); bloons.push(new Bloon(next.type)); spawnDelay = next.delay;
+                    } else spawnDelay--;
+                } else if(bloons.length === 0) {
+                    roundInProgress = false; money += 100 + currentRound; currentRound++;
+                    if(currentRound > 80) { alert("ניצחת! את כל 80 השלבים הקשוחים המשחק מאת נועם מרסיאנו!"); gameOver = true; }
+                    else if(autoStart) {
+                        // הפעלת השלב הבא אוטומטית אחרי שנייה
+                        setTimeout(() => { if(autoStart && !roundInProgress) startRound(); }, 1000); 
+                    }
+                    updateMainUI();
+                }
+            }
+
+            for(let t of towers) { t.buffed = false; t.buffedJungle = false; }
+            let villages = towers.filter(t => t.isVillage);
+            for(let v of villages) {
+                for(let t of towers) {
+                    if(t !== v && !t.isFarm && Math.hypot(t.x - v.x, t.y - v.y) <= v.range) {
+                        t.buffed = true; 
+                        if (v.hasJungleDrums) t.buffedJungle = true; 
+                    }
+                }
+            }
+
+            for(let t of towers) t.update();
+            projectiles = projectiles.filter(p => p.active); for(let p of projectiles) p.update();
+            bloons = bloons.filter(b => b.hp > 0);
+            bloons.sort((a, b) => (a.isBlimp === b.isBlimp) ? 0 : a.isBlimp ? -1 : 1);
+            for(let b of bloons) b.update();
+            
+            particles = particles.filter(p => p.life > 0); for(let p of particles) p.life--;
+            bananas = bananas.filter(b => b.life > 0); for(let b of bananas) b.life--;
+        }
+
+        function gameLoop() {
+            if(gameOver) return;
+            for(let step = 0; step < gameSpeedMultiplier; step++) updateGame();
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height); 
+            drawPath();
+
+            for(let t of towers) t.draw();
+            for(let p of projectiles) p.draw();
+            for(let b of bananas) b.draw();
+            for(let b of bloons) b.draw();
+            
+            for(let p of particles) {
+                if(p.isExplosion) {
+                    ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI*2); ctx.fillStyle = p.color; ctx.fill();
+                } else if (p.isIceNova) {
+                    ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI*2); ctx.fillStyle = `rgba(173, 216, 230, ${p.life/20})`; ctx.fill();
+                } else if (p.isLine) {
+                    ctx.beginPath(); ctx.moveTo(p.x1, p.y1); ctx.lineTo(p.x2, p.y2);
+                    ctx.strokeStyle = `rgba(255, 204, 0, ${p.life/8})`; ctx.lineWidth = 3; ctx.stroke();
+                } else {
+                    ctx.fillStyle = 'green'; ctx.font = '16px Arial'; ctx.fillText(p.text, p.x, p.y); 
+                    if(gameSpeedMultiplier === 1 || p.life % 3 === 0) p.y -= 1; 
+                }
+            }
+
+            if (selectedBuildType && !activeTower) {
+                const data = TOWER_TYPES[selectedBuildType];
+                let valid = isValidPlacement(mouseX, mouseY, data.radius);
+                let canAfford = money >= data.cost;
+                
+                if (!data.isHeli) {
+                    if (data.range < 2000) {
+                        ctx.beginPath(); ctx.arc(mouseX, mouseY, data.range, 0, Math.PI * 2);
+                        if (valid && canAfford) { ctx.fillStyle = 'rgba(255, 255, 255, 0.25)'; ctx.strokeStyle = 'white'; } 
+                        else { ctx.fillStyle = 'rgba(255, 0, 0, 0.35)'; ctx.strokeStyle = 'red'; }
+                        ctx.fill(); ctx.lineWidth = 1.5; ctx.stroke();
+                    }
+                }
+
+                ctx.save();
+                ctx.globalAlpha = (valid && canAfford) ? 0.8 : 0.4; 
+                let previewTower = new Tower(selectedBuildType, mouseX, mouseY);
+                let tempActive = activeTower; 
+                activeTower = null; 
+                previewTower.draw();
+                activeTower = tempActive;
+                ctx.restore();
+            }
+            requestAnimationFrame(gameLoop);
+        }
+
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect(); mouseX = e.clientX - rect.left; mouseY = e.clientY - rect.top;
+        });
+
+        canvas.addEventListener('click', (e) => {
+            if(gameOver) return;
+            const rect = canvas.getBoundingClientRect(); const x = e.clientX - rect.left; const y = e.clientY - rect.top;
+            
+            let clickedBanana = false;
+            for (let i = bananas.length - 1; i >= 0; i--) {
+                let b = bananas[i];
+                if (Math.hypot(b.x - x, b.y - y) <= b.radius + 15) {
+                    money += b.value; updateMainUI(); particles.push({x: b.x, y: b.y, text: '+💵', life: 30}); bananas.splice(i, 1); clickedBanana = true;
+                }
+            }
+            if (clickedBanana) return; 
+
+            let clickedExisting = false;
+            for(let t of towers) {
+                if(Math.hypot(t.x - x, t.y - y) <= t.radius) {
+                    activeTower = t; selectTower(null); 
+                    updateMainUI(); clickedExisting = true; break;
+                }
+            }
+
+            if(!clickedExisting) {
+                if(selectedBuildType) {
+                    const towerData = TOWER_TYPES[selectedBuildType];
+                    if(money >= towerData.cost && isValidPlacement(x, y, towerData.radius)) {
+                        towers.push(new Tower(selectedBuildType, x, y)); money -= towerData.cost; updateMainUI(); selectTower(null); 
+                    }
+                } else {
+                    activeTower = null; updateMainUI();
+                }
+            }
+        });
+
+        // ==========================================
+        // כאן אנחנו מוסיפים את הפונקציות של ההגדרות:
+        // ==========================================
+        
+        let gamePaused = false; // משתנה למקרה שנרצה לעצור את המשחק
+
+        function toggleSettings() {
+            const overlay = document.getElementById('settings-overlay');
+            if (overlay.style.display === 'flex') {
+                overlay.style.display = 'none';
+                gamePaused = false; 
+            } else {
+                overlay.style.display = 'flex';
+                gamePaused = true;  
+            }
+        }
+
+        function goHome() {
+            if (confirm("האם אתה בטוח שברצונך לחזור לתפריט הראשי?")) {
+                window.location.href = 'indax.html'; 
+            }
+        }
+
+        function restartGame() {
+            if (confirm("האם להפעיל את השלב מחדש?")) {
+                window.location.reload();
+            }
+        }
+        // ==========================================
+
+        generateMenuIcons(); 
+        updateMainUI();
+        gameLoop();
+    </script>
+    <!-- Tower expansion: Dartling, Mortar, Sub, Buccaneer, Ace, Druid, Spike Factory, Engineer -->
+    <script src="btd_expansion.js?v=2" data-map="end_of_road"></script>
+    <!-- Original 14 towers: 3 upgrade paths x 5 tiers each -->
+    <script src="btd_originals.js?v=1"></script>
+</body>
+</html>
